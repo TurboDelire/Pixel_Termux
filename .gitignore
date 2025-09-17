@@ -1,0 +1,22 @@
+# == PIXEL strict ignore ==
+/00_inbox/
+/20_restored/
+/30_publish/
+/40_output/
+/50_archive/
+scan/
+pen_wifi/
+pen_scan/
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.tgz
+**/*.gz
+**/*.7z
+**/*.bak
+**/*.tmp
+**/*.log
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/

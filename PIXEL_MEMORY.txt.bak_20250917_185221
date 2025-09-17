@@ -1,0 +1,103 @@
+PIXEL — Mémoire Opérationnelle (Hugo, S24)
+Version: v1.8.0
+Date: 2025-09-17 01:38:23 (Europe/Paris)
+
+OBJET
+—
+Mémoire unique, inject-able et horodatée qui centralise les règles, chemins, ports et procédures “PIXEL”.
+Base: v1.7.0 (S24) — enrichie avec directives "audit before code", ports ≥7000 par défaut, logging systématique.
+
+0) TL;DR
+—
+• **AUDIT FIRST** : lecture/analyse des logs et code existant **obligatoire** avant toute création de nouveau code.
+• Ports backends: **≥7000** (7100, 7200, 7300...) — choix automatique d’un port libre.
+• Tous les scripts livrés **un seul bloc CAT** (script complet), verbeux, mobile-first S24, tests smoke et ouverture automatique.
+• Logs + manifest + backup pour **toute** action destructrice. SemVer obligatoire.
+
+I — SOURCES & STRUCTURE
+—
+• Racine : /sdcard/Download
+• Atelier : /sdcard/Download/PIXEL_WS
+  - 00_inbox/ 10_workspace/ 20_restored/ 30_publish/ 40_output/ 50_archive/ 99_tmp/
+• Journal persistant : /sdcard/Download/PIXEL_WS/PIXEL_MEMORY.txt (MAÎTRE)
+
+II — NOUVELLES RÈGLES (v1.8.0)
+—
+1) **Audit obligatoire** :
+   - Avant d'écrire un script, récupérer le zip de logs (commande fournie), l'analyser, identifier causes racines (ports occupés, tracebacks, permissions), puis produire un **plan d'action minimal**. Seul après validation du plan, livrer le script complet.
+   - Processus enregistré en mémoire : « lire logs → diagnostic → plan → script complet ». (Règle persistante)
+
+2) **Ports ≥7000 par défaut** :
+   - Backends tentent 7100 (scan) et 7200 (osint) puis incrémentent jusqu'à 7999 pour trouver un port libre. Evite conflit avec 8083/8084/6060s historiques.
+   - Tous les scripts doivent inclure une vérification de port libre avant bind (fonction utilitaire `pick_free`).
+
+3) **Stubs robustes** :
+   - Si script backend manquant, creer un stub HTTP acceptant GET/POST/OPTIONS, exposant `/health` et renvoyant JSON d'echo. Stubs doivent avoir headers CORS permissifs pour debug mobile.
+
+4) **Logs & Packaging automatique** :
+   - Tout script doit logger dans `PIXEL_WS/40_output/logs` avec RUNID daté. En cas d'échec santé, générer automatiquement `/sdcard/Download/pixel_logs_<RUNID>.zip`.
+
+5) **Wrapper same-origin pour audit UI** :
+   - Générer une page monitor servie par 8083 qui charge la PEN UI en iframe (même origine) pour injection JS permettant : prefilling, capture de CLICK/FETCH/XHR/WS/SSE, tail logs, audit boutons. Evite modification directe de PEN UI.
+
+6) **Verbosity par défaut** :
+   - Scripts verbeux, colorés, avec messages [OK]/[FAIL]/[INFO], progress bars minimales et messages d’ouverture (am start / termux-open-url si dispo).
+
+7) **Timestamp systématique** :
+   - Toute modification majeure du PIXEL_MEMORY doit ajouter une entrée horodatée (YYYY-MM-DD HH:MM:SS TZ) dans la section CHANGELOG + un résumé opérationnel dans `40_output/logs`.
+
+III — GABARIT S24 (rappel rapide)
+—
+• mobile-first, tap targets ≥44px, meta viewport, dark/light, fonts et paddings adaptés. Iframes 100% width ; éviter overflow horizontal.
+
+IV — RUNBOOK RÉSUMÉ (audit first)
+—
+1. Collecte logs (zip) → lancer `pixel_collect_logs_v1.0.2_s24.sh` (ou équivalent).
+2. Analyse logs : extraire Tracebacks, Errno 98, Permission denied, Failed to fetch.
+3. Plan d’action minimal : libérer ports / relancer stubs / rewire UI on same-origin.
+4. Livrer script CAT unique — exécuter en local (test-only).
+5. Si GO, bascule avec backup+manifest.
+
+V — EXEMPLE D’ENTRÉE D’OPÉRATION (AUTO-GÉNÉRÉE)
+—
+# OPERATION: repair_suite_7000_v1.1.0_s24
+- RUNID: repair_7000_20250917_013823
+- Date: 2025-09-17 01:38:23 (Europe/Paris)
+- Actions: serv 8083 UP, started scan_api stub on :7100, started osint_api stub on :7200, generated OSINT Monitor at /PIXEL_WS/30_publish/osint_monitor_repair_7000_20250917_013823.html
+- Logs: /sdcard/Download/PIXEL_WS/40_output/logs/repair_7000_20250917_013823.log
+
+VI — CHANGELOG
+—
+• v1.8.0 (2025-09-17 01:38:23 Europe/Paris) — Ajout règles `audit before code`, ports ≥7000, stubs CORS GET/POST, packaging auto des logs, wrapper same-origin monitor, timestamp systématique.
+• v1.7.0 — Gabarit S24, galerie dir-first, runbook (source: upload).
+• v1.6.0 — Blueprint + Runbook initial.
+
+VII — INSTRUCTIONS D’EXPORT (si tu veux le fichier sur ton device)
+—
+Ce fichier est déjà en place : `/sdcard/Download/PIXEL_WS/PIXEL_MEMORY.txt`
+==== APPEND 2025-09-17 18:49:57 CEST — v1.6.0 (FULL + BLUEPRINT + RUNBOOK) ====
+PIXEL — Mémoire Opérationnelle (FULL + BLUEPRINT + RUNBOOK)
+Version: v1.6.0
+Date: 2025-09-16 04:03:50 (Europe/Paris)
+
+BUT
+Conserver TOUT (structure, emplacements, conventions) pour pouvoir RECRÉER l’environnement à partir des journaux et artefacts, 
+prévisualiser AVANT toute bascule, et publier avec sauvegardes/traçabilité. STOP CODE par défaut.
+[... CONTENU INTÉGRAL v1.6.0 tel que fourni par Hugo, sections I → XIV + CHANGELOG + ADDENDA v1.6.0 ...]
+==== APPEND 2025-09-17 18:49:57 CEST — v1.7.0 (S24 + galerie dir-first) ====
+PIXEL — Mémoire Opérationnelle (Hugo, S24)
+Version: v1.7.0
+Date: 2025-09-16 06:58:11 (Europe/Paris)
+
+OBJET — Mémoire unique inject-able (S24 mobile-first, galerie dir-first).
+[... CONTENU INTÉGRAL v1.7.0 tel que fourni par Hugo, sections 0 → XII + CHANGELOG ...]
+==== APPEND 2025-09-17 18:49:57 CEST — v1.8.0 (Audit First / ≥7000 / CORS / logging) ====
+PIXEL — Mémoire Opérationnelle (Hugo, S24)
+Version: v1.8.0
+Date: 2025-09-17 01:38:23 (Europe/Paris)
+
+OBJET — Audit-first, ports ≥7000, stubs CORS GET/POST/OPTIONS, logging & packaging auto, wrapper same-origin monitor, timestamps.
+[... CONTENU INTÉGRAL v1.8.0 tel que fourni par Hugo, sections 0 → VII ...]
+==== APPEND 2025-09-17 18:49:57 CEST — v1.8.1 (reconstitution) ====
+• Restauration append-only PIXEL_MEMORY (v1.6.0 + v1.7.0 + v1.8.0) depuis sauvegardes/assistant.
+
