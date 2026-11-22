@@ -1,33 +1,66 @@
-# Télécommande réseau Freebox Player
+# Télécommande Freebox Player
 
-Pilote le Freebox Player via l'API HTTP locale `/pub/remote_control` (pas de Bluetooth).
+## ⚠️ Quel Player ?
 
-## Prérequis
-1. Player → **Réglages → Système → Télécommande réseau** : récupère le **code** (8 chiffres).
-2. Note l'**IP locale** du Player (ou utilise `hd1.freebox.fr`).
-3. Téléphone et Player sur le **même réseau Wi-Fi**.
+- **Freebox Player Pop / Ultra (Android TV)** → utilise **`atv.py`** (protocole Android TV Remote v2).
+  L'ancienne API HTTP `/pub/remote_control` **ne marche pas** sur ces modèles.
+- **Anciens Players (Revolution/V6, Mini 4K…)** → `freebox_remote.html` + `fbx_key.sh` (API legacy HTTP).
 
-## 1) Interface tactile (navigateur)
-Ouvre `freebox_remote.html` dans le navigateur du téléphone (Chrome/Firefox).
-- Renseigne IP + code dans ⚙️ Configuration → Enregistrer.
-- Bouton **Tester** envoie `ok`.
-- Section **Mes boutons / macros** : crée tes propres boutons (ex: `home,down,down,ok` ou `1,4` pour chaîne 14).
-- Si rien ne se passe en mode *Image GET*, bascule sur *fetch no-cors* dans la config.
-- Tout est stocké en local (localStorage), rien ne sort du téléphone.
+Ton matériel = **Player Pop, Freebox OS v10 → `atv.py`.**
 
-## 2) Ligne de commande (Termux)
+---
+
+## atv.py — Player Pop (Android TV)
+
+### Installation (Termux)
 ```bash
-pkg install curl          # si besoin
-export FBX_IP=192.168.x.x
-export FBX_CODE=12345678
-chmod +x fbx_key.sh
-./fbx_key.sh ok
-./fbx_key.sh up up ok
-./fbx_key.sh 1 4          # chaîne 14
+pkg install python python-cryptography
+pip install androidtvremote2
 ```
 
-## Touches valides
-`power up down left right ok home list epg info options swap vol_inc vol_dec mute prgm_inc prgm_dec play stop bwd fwd prev next rec red green yellow blue 0 1 2 3 4 5 6 7 8 9`
+### Appairage (une seule fois)
+```bash
+python atv.py pair --host 192.168.x.x
+```
+Un code à 6 caractères s'affiche sur la TV → tape-le. L'IP et les certs TLS
+sont mémorisés dans `~/.freebox_atv/`.
 
-## Notes
-- L'endpoint `/pub/remote_control` est l'API **legacy**. Sur firmwares récents elle peut être désactivée ; dans ce cas il faut passer par l'API authentifiée officielle (session + app_token). Dis-le moi si ça ne répond pas.
+### Envoyer des touches
+```bash
+python atv.py key home ok          # séquence
+python atv.py key 1 4              # chaîne 14
+python atv.py key vol+ vol+ mute
+python atv.py keys                 # liste tous les alias
+```
+
+### Mode interactif (clavier = télécommande)
+```bash
+python atv.py tui
+```
+Flèches = navigation · Entrée = OK · Retour arrière = Back · `h` = Accueil ·
+`+`/`-` = volume · `m` = muet · Espace/`p` = play/pause · `s` = stop ·
+`n`/`b` = suivant/précédent · `0-9` = chiffres · `P` = power · `q` = quitter.
+
+### Alias de touches
+`power up down left right ok home back menu vol+ vol- mute ch+ ch- play stop
+next prev fwd bwd search mic 0-9` (+ noms Android bruts type `DPAD_UP`).
+
+### Limites connues
+- **Allumage** : POWER ne rallume pas toujours un Pop éteint (limite du protocole,
+  confirmée côté Home Assistant). Le reste fonctionne.
+- Player et téléphone doivent être sur le **même réseau Wi-Fi**.
+- Ne supprime pas `~/.freebox_atv/` sinon il faut ré-appairer.
+
+---
+
+## Legacy (anciens Players uniquement)
+
+### freebox_remote.html
+Page tactile à ouvrir dans le navigateur. Config IP + code télécommande
+(Player → Réglages → Système). N'a d'effet que sur les Players pré-Android TV.
+
+### fbx_key.sh
+```bash
+export FBX_IP=192.168.x.x ; export FBX_CODE=12345678
+./fbx_key.sh ok
+```
