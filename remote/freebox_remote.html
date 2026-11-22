@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Télécommande Freebox Player</title>
+<style>
+  :root{
+    --bg:#0d0f14; --card:#161a22; --card2:#1d2230; --line:#2a3142;
+    --txt:#e8ecf4; --muted:#8a93a6; --accent:#2f6df6; --accent2:#1b4fd1;
+    --ok:#2ec38b; --warn:#f5a623; --err:#e5484d;
+    --red:#e5484d; --green:#2ec38b; --yellow:#f5c518; --blue:#2f6df6;
+    --gap:10px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{padding:12px;max-width:520px;margin:0 auto;padding-bottom:40px}
+  h1{font-size:17px;margin:4px 0 10px;font-weight:600}
+  .bar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
+  .dot.ok{background:var(--ok)} .dot.err{background:var(--err)}
+  .status{font-size:12px;color:var(--muted);flex:1;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  button{font:inherit;color:var(--txt);background:var(--card2);border:1px solid var(--line);
+    border-radius:12px;padding:14px 6px;font-size:16px;cursor:pointer;
+    user-select:none;touch-action:manipulation;transition:transform .05s,background .1s}
+  button:active{transform:scale(.94);background:var(--accent)}
+  .grid{display:grid;gap:var(--gap)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .block{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:12px;margin-bottom:12px}
+  .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+    margin:0 0 8px 2px}
+  .col-red{color:var(--red)} .col-green{color:var(--green)}
+  .col-yellow{color:var(--yellow)} .col-blue{color:var(--blue)}
+  .dpad{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+    gap:var(--gap);aspect-ratio:1/1;max-width:320px;margin:0 auto}
+  .dpad .ok{background:var(--accent);border-color:var(--accent2);font-weight:700}
+  .dpad .sp{visibility:hidden}
+  .wide{grid-column:1/-1}
+  .mini{font-size:13px;padding:11px 4px}
+  .power{background:var(--err);border-color:#b2383c}
+  details{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:10px 12px;margin-bottom:12px}
+  summary{cursor:pointer;font-size:14px;color:var(--muted)}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  input,select,textarea{width:100%;background:var(--bg);color:var(--txt);
+    border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+  .row{display:flex;gap:8px;align-items:center}
+  .row > *{flex:1}
+  .small{font-size:12px;color:var(--muted);margin-top:6px}
+  .custbtn{position:relative}
+  .custbtn .del{position:absolute;top:-6px;right:-6px;background:var(--err);
+    border:none;border-radius:50%;width:22px;height:22px;padding:0;font-size:13px;line-height:1}
+  .ghost{background:transparent;border-style:dashed;color:var(--muted)}
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+    background:var(--card2);border:1px solid var(--line);padding:8px 14px;border-radius:20px;
+    font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.on{opacity:1}
+</style>
+</head>
+<body>
+  <div class="bar">
+    <span class="dot" id="dot"></span>
+    <h1 style="margin:0">Freebox Player</h1>
+    <span class="status" id="status" style="text-align:right">non configuré</span>
+  </div>
+
+  <details id="cfg">
+    <summary>⚙️ Configuration (IP + code télécommande)</summary>
+    <label>Adresse du Player (IP locale ou hôte)</label>
+    <input id="ip" placeholder="192.168.x.x  ou  hd1.freebox.fr" autocomplete="off" inputmode="url">
+    <label>Code télécommande (Player → Réglages → Système)</label>
+    <input id="code" placeholder="8 chiffres" inputmode="numeric" autocomplete="off">
+    <label>Mode d'envoi</label>
+    <select id="mode">
+      <option value="img">Image GET (recommandé, pas de CORS)</option>
+      <option value="fetch">fetch no-cors</option>
+    </select>
+    <div class="row" style="margin-top:12px">
+      <button class="mini" onclick="saveCfg()">💾 Enregistrer</button>
+      <button class="mini ghost" onclick="testCfg()">🔌 Tester</button>
+    </div>
+    <div class="small">Tout est stocké en local sur le téléphone (localStorage). Aucune donnée ne sort.</div>
+  </details>
+
+  <div class="block">
+    <div class="grid g4">
+      <button class="power" onpointerdown="K('power')">⏻</button>
+      <button onpointerdown="K('home')">🏠 Free</button>
+      <button onpointerdown="K('list')">☰ Liste</button>
+      <button onpointerdown="K('epg')">📺 Guide</button>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="dpad">
+      <button class="sp"></button>
+      <button onpointerdown="K('up')">▲</button>
+      <button class="sp"></button>
+      <button onpointerdown="K('left')">◀</button>
+      <button class="ok" onpointerdown="K('ok')">OK</button>
+      <button onpointerdown="K('right')">▶</button>
+      <button class="sp"></button>
+      <button onpointerdown="K('down')">▼</button>
+      <button class="sp"></button>
+    </div>
+    <div class="grid g3" style="margin-top:10px">
+      <button onpointerdown="K('info')">ℹ️ Info</button>
+      <button onpointerdown="K('options')">⚙️ Opt</button>
+      <button onpointerdown="K('swap')">⇄ Swap</button>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="lbl">Volume · Chaîne</div>
+    <div class="grid g3">
+      <button onpointerdown="K('vol_inc')">🔊 +</button>
+      <button onpointerdown="K('mute')">🔇</button>
+      <button onpointerdown="K('prgm_inc')">P +</button>
+      <button onpointerdown="K('vol_dec')">🔉 −</button>
+      <button class="col-yellow" onpointerdown="K('vol_dec')" style="visibility:hidden"></button>
+      <button onpointerdown="K('prgm_dec')">P −</button>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="lbl">Lecture</div>
+    <div class="grid g3">
+      <button onpointerdown="K('bwd')">⏪</button>
+      <button onpointerdown="K('play')">⏯</button>
+      <button onpointerdown="K('fwd')">⏩</button>
+      <button onpointerdown="K('prev')">⏮</button>
+      <button onpointerdown="K('stop')">⏹</button>
+      <button onpointerdown="K('next')">⏭</button>
+    </div>
+    <div class="grid g4" style="margin-top:10px">
+      <button class="rec" onpointerdown="K('rec')" style="color:var(--err)">⏺ REC</button>
+      <button class="col-red" onpointerdown="K('red')">●</button>
+      <button class="col-green" onpointerdown="K('green')">●</button>
+      <button class="col-yellow" onpointerdown="K('yellow')">●</button>
+    </div>
+    <div class="grid g4" style="margin-top:10px">
+      <button class="col-blue" onpointerdown="K('blue')">● Bleu</button>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="lbl">Numérique · appui long auto pour saisie rapide</div>
+    <div class="grid g3" id="pad">
+      <button onpointerdown="K('1')">1</button>
+      <button onpointerdown="K('2')">2</button>
+      <button onpointerdown="K('3')">3</button>
+      <button onpointerdown="K('4')">4</button>
+      <button onpointerdown="K('5')">5</button>
+      <button onpointerdown="K('6')">6</button>
+      <button onpointerdown="K('7')">7</button>
+      <button onpointerdown="K('8')">8</button>
+      <button onpointerdown="K('9')">9</button>
+      <button class="sp"></button>
+      <button onpointerdown="K('0')">0</button>
+      <button class="sp"></button>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="lbl">Mes boutons / macros</div>
+    <div class="grid g3" id="customGrid"></div>
+    <button class="ghost wide" style="margin-top:10px" onclick="openEditor()">＋ Ajouter un bouton</button>
+  </div>
+
+  <details>
+    <summary>➕ Éditeur de bouton / macro</summary>
+    <label>Libellé</label>
+    <input id="eLabel" placeholder="ex: Netflix, Chaîne 14, Reset">
+    <label>Séquence de touches (séparées par virgule)</label>
+    <input id="eKeys" placeholder="ex: home,down,down,ok   ou   1,4">
+    <label>Délai entre touches (ms)</label>
+    <input id="eDelay" inputmode="numeric" value="300">
+    <div class="row" style="margin-top:12px">
+      <button class="mini" onclick="addCustom()">Ajouter</button>
+      <button class="mini ghost" onclick="clearCustom()">Tout effacer</button>
+    </div>
+    <div class="small">Touches valides : power, up, down, left, right, ok, home, list, epg, info, options, swap,
+      vol_inc, vol_dec, mute, prgm_inc, prgm_dec, play, stop, bwd, fwd, prev, next, rec,
+      red, green, yellow, blue, 0-9.</div>
+  </details>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+const LS='fbxRemote';
+let cfg={ip:'',code:'',mode:'img',custom:[]};
+
+function load(){
+  try{const s=JSON.parse(localStorage.getItem(LS)); if(s) cfg={...cfg,...s};}catch(e){}
+  ip.value=cfg.ip; code.value=cfg.code; document.getElementById('mode').value=cfg.mode;
+  renderCustom(); refreshStatus();
+}
+function persist(){ try{localStorage.setItem(LS,JSON.stringify(cfg));}catch(e){} }
+
+function saveCfg(){
+  cfg.ip=ip.value.trim(); cfg.code=code.value.trim();
+  cfg.mode=document.getElementById('mode').value;
+  persist(); refreshStatus(); toast('Config enregistrée');
+  if(cfg.ip&&cfg.code) document.getElementById('cfg').open=false;
+}
+function refreshStatus(){
+  const ok=cfg.ip&&cfg.code;
+  document.getElementById('status').textContent= ok? cfg.ip : 'non configuré';
+  const d=document.getElementById('dot'); d.className='dot'+(ok?' ok':'');
+  if(!ok) document.getElementById('cfg').open=true;
+}
+
+function url(key,long){
+  let host=cfg.ip.replace(/^https?:\/\//,'').replace(/\/+$/,'');
+  let u='http://'+host+'/pub/remote_control?code='+encodeURIComponent(cfg.code)+'&key='+encodeURIComponent(key);
+  if(long) u+='&long=true';
+  u+='&t='+Date.now();
+  return u;
+}
+function send(key,long){
+  if(!cfg.ip||!cfg.code){toast('Configure IP + code'); document.getElementById('cfg').open=true; return;}
+  const u=url(key,long);
+  if(cfg.mode==='fetch'){
+    fetch(u,{mode:'no-cors',cache:'no-store'}).catch(()=>{});
+  }else{
+    const img=new Image(); img.onerror=()=>{}; img.onload=()=>{}; img.src=u;
+  }
+}
+// K = envoi unitaire avec vibration
+function K(key){ send(key,false); buzz(); flashDot(); }
+function buzz(){ if(navigator.vibrate) navigator.vibrate(12); }
+let dotT;
+function flashDot(){ const d=document.getElementById('dot'); d.classList.add('ok');
+  clearTimeout(dotT); dotT=setTimeout(refreshStatus,250); }
+
+function testCfg(){
+  cfg.ip=ip.value.trim(); cfg.code=code.value.trim(); persist();
+  if(!cfg.ip||!cfg.code){toast('Remplis IP + code');return;}
+  send('ok',false);
+  toast('Commande OK envoyée — regarde le Player');
+}
+
+/* ---- boutons personnalisés ---- */
+function renderCustom(){
+  const g=document.getElementById('customGrid'); g.innerHTML='';
+  cfg.custom.forEach((c,i)=>{
+    const wrap=document.createElement('div'); wrap.className='custbtn';
+    const b=document.createElement('button'); b.textContent=c.label;
+    b.onpointerdown=()=>runMacro(c);
+    const del=document.createElement('button'); del.className='del'; del.textContent='×';
+    del.onclick=(e)=>{e.stopPropagation(); cfg.custom.splice(i,1); persist(); renderCustom();};
+    wrap.appendChild(b); wrap.appendChild(del); g.appendChild(wrap);
+  });
+}
+function addCustom(){
+  const label=eLabel.value.trim();
+  const keys=eKeys.value.split(',').map(s=>s.trim()).filter(Boolean);
+  const delay=parseInt(eDelay.value,10)||300;
+  if(!label||!keys.length){toast('Libellé + touches requis');return;}
+  cfg.custom.push({label,keys,delay}); persist(); renderCustom();
+  eLabel.value=''; eKeys.value=''; toast('Bouton ajouté');
+}
+function clearCustom(){ if(confirm('Effacer tous les boutons personnalisés ?')){cfg.custom=[];persist();renderCustom();} }
+function openEditor(){ document.querySelector('details:last-of-type').open=true;
+  document.querySelector('details:last-of-type').scrollIntoView({behavior:'smooth'}); }
+async function runMacro(c){
+  buzz();
+  for(let i=0;i<c.keys.length;i++){
+    send(c.keys[i], i<c.keys.length-1 && /^\d$/.test(c.keys[i]) && /^\d$/.test(c.keys[i+1]));
+    if(i<c.keys.length-1) await new Promise(r=>setTimeout(r,c.delay));
+  }
+  toast('▶ '+c.label);
+}
+
+let toastT;
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),1600); }
+
+load();
+</script>
+</body>
+</html>
